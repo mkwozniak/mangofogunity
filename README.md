@@ -12,7 +12,7 @@ If there's any comments, questions or issues, email me at mkwozniak@outlook.com.
 
 ![MangoFog2D Preview](https://i.imgur.com/o4MgGTB.png)
 
-**This is meant for Unity Versions 2018 + **
+**This is meant for Unity Versions 2018 +**
 
 ### Features
 * You can easily switch between 2D and 3D perspective modes if you wish.
