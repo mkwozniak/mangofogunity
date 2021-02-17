@@ -28,6 +28,8 @@ Here's a screen shot from the included example scene using some art from opengam
 7. Set the radius and/or the Fov Degrees accordingly. (Mind it can produce weird results if you overshoot the degrees and inner/outer radius)
 8. That's it! If you set the inspector values correct for your scene, you can press play and see the FoW with your revealer radius.
 
+**Make sure to call Dispose() on the MangoFogInstance before switching scenes**
+
 Here is a standard 2D Orthographic setup in the Inspector.
 
 ![MangoFog2D Inspector Setup](https://i.imgur.com/Hez5ZBX.png)
