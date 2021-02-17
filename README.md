@@ -5,7 +5,8 @@ The fog runs on its own thread and doesn't affect performance.
 https://github.com/insominx/TasharenFogOfWar
 
 I'm using this for a 2D game I'm developing for fun. Maybe someone else will also find it useful.
-Here's a screen shot example scene in the project using some art from opengameart and the Tilemap system.
+Here's a screen shot from the included example scene using some art from opengameart and the Tilemap system.
+
 ![MangoFog2D Preview](https://i.imgur.com/o4MgGTB.png)
 
 ### Features
@@ -27,9 +28,11 @@ Here's a screen shot example scene in the project using some art from opengamear
 8. That's it! If you set the inspector values correct for your scene, you can press play and see the FoW with your revealer radius.
 
 Here is a standard 2D Orthographic setup in the Inspector.
+
 ![MangoFog2D Inspector Setup](https://i.imgur.com/Hez5ZBX.png)
 
 Here is the settings I used in the preview for my 2D character.
+
 ![MangoFog2D Revealer 2D Setup](https://i.imgur.com/XKXuHGl.png)
 
 ### Not Included Yet
@@ -47,10 +50,3 @@ This is only apparent in high quality blurred 3D fog. This is fixed when loading
 This is apparent in high quality blurred 3D fog and is merely an annoying visual glitch.
 If I have time I'll design the multiple chunk system differently to maybe avoid this issue.
 If you have any idea what's causing it, let me know, it was annoying me!
-
-
-
-
-
-
-
