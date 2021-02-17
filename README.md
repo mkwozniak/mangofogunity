@@ -15,6 +15,7 @@ Here's a screen shot from the included example scene using some art from opengam
 * The inspector variables give you easy control over all aspects of the fog.
 * Basic example scenes with saving/loading fog buffers included.
 * Simple and easy to use, no need for advanced knowledge of Unity.
+* Fully commented, namespaced and tooltipped.
 
 ### Installation
 
