@@ -9,7 +9,7 @@ Here's a screen shot from the included example scene using some art from opengam
 
 ![MangoFog2D Preview GIF](https://media.giphy.com/media/KqieE87PNAGAuijVMQ/giphy.gif)
 
-![MangoFog2D Preview](https://imgur.com/a/uPscY9a)
+![MangoFog2D Preview](https://i.imgur.com/o4MgGTB.png)
 
 ### Features
 * You can easily switch between 2D and 3D perspective modes if you wish.
