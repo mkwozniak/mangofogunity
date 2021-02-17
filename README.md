@@ -1,4 +1,4 @@
-# mangofogunity2d
+# MangoFog Unity 2D
 MangoFog2D is an open source 2D/3D mesh based fog system for the Unity Engine. It's based off TasharenFogOfWar except it uses a complete Mesh based render system with several new features. 
 The original blur algorithm and LOS algorithm is all thanks to TasharenFogOfWar. The same technique is applied to the Orthographic2D perspective.
 The fog runs on its own thread and doesn't affect performance.
