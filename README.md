@@ -6,6 +6,7 @@ https://github.com/insominx/TasharenFogOfWar
 
 I'm using this for a 2D game I'm developing for fun. Maybe someone else will also find it useful.
 Here's a screen shot from the included example scene using some art from opengameart and the Tilemap system.
+If there's any comments, questions or issues, email me at mkwozniak@outlook.com.
 
 ![MangoFog2D Preview GIF](https://media.giphy.com/media/KqieE87PNAGAuijVMQ/giphy.gif)
 
