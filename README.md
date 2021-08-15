@@ -45,7 +45,7 @@ Here is the settings I used in the preview for my 2D character.
 
 ### Not Included Yet
 1. Minimap 
-* The minimap FoW hasn't yet been implemented. I just haven't found the need for it in my project so I didn't include it. An easy option is to simply render another camera with specific layers. This would achieve a basic minimap
+* The minimap FoW hasn't yet been implemented. I just haven't found the need for it in my project so I didn't include it. The fog can be applied to a Render Texture like any other so it should be easy to implement.
 
 ### Experimental Features
 The experimental chunks feature allows multiple threads to be created each with their own fog, allowing for the FoW to cover huge areas without rendering massive textures. This isn't fully setup the way I originally intended. Though it works and there is an example scene that tests it out.
