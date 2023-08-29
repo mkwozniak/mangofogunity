@@ -11,6 +11,7 @@ public class LookAtPointEditor : Editor
 
     string drawMode_tooltip = "The draw mode of the fog. MeshRenderer mode will create a MeshFilter and MeshRenderer component and render it through a gameobject. \n" +
     "GPU mode will render the mesh and material directly to the GPU without adding components.";
+    string blendMode_tooltip = "Whether or not to blend the fog colors.";
     string textureBlendTime_tooltip = "How long it takes for textures to blend from one to another.";
     string fogRenderHeightPosition_tooltip = "The render height of the fog. This is the y axis in 3D and the z axis in 2D. \n" +
         "3D Recommended Value: 1 \n" +
@@ -44,6 +45,10 @@ public class LookAtPointEditor : Editor
     string exploredColor_tooltip = "The explored color of the fog.";
     string fogMat_tooltip = "The fog material to use.";
     string fogShader_tooltip = "The fog shader to use.";
+    string fogSpritePPU_tooltip = "The PPU of the fog sprite when using Sprite render mode.";
+    string fogSpriteSlicingSize_tooltip = "The slicing width and height of the fog sprite when using Sprite render mode.";
+    string fogSpriteRenderLayer_tooltip = "The render layer of the fog sprite when using Sprite render mode.";
+    string fogSpriteRenderOrder_tooltip = "The render order of the fog sprite when using Sprite render mode.";
     string fogFilterMode_tooltip = "The fog texture filter mode";
     string heightObstacleMask_tooltip = "The height obstacle mask for LOS revealers.";
     string heightRange_tooltip = "The height range for the level for LOS revealers. If LOS is not working properly, this range may be the cause of it. Try different ranges. \n" +
@@ -57,6 +62,7 @@ public class LookAtPointEditor : Editor
         "Default Value for Unity Quad: (0, 0, 0)";
 
     SerializedProperty drawMode;
+    SerializedProperty blendMode;
     SerializedProperty textureBlendTime;
     SerializedProperty meshScaleDivisor;
     SerializedProperty meshScalePostMultiplier;
@@ -76,6 +82,10 @@ public class LookAtPointEditor : Editor
     SerializedProperty exploredColor;
     SerializedProperty fogMat;
     SerializedProperty fogShader;
+    SerializedProperty fogSpritePPU;
+    SerializedProperty fogSpriteSlicingSize;
+    SerializedProperty fogSpriteRenderLayer;
+    SerializedProperty fogSpriteRenderOrder;
     SerializedProperty fogFilterMode;
     SerializedProperty heightObstacleMask;
     SerializedProperty heightRange;
@@ -92,6 +102,7 @@ public class LookAtPointEditor : Editor
     {
         targ = (MangoFogInstance)target;
         drawMode = serializedObject.FindProperty("drawMode");
+        blendMode = serializedObject.FindProperty("BlendMode");
         orientation = serializedObject.FindProperty("orientation");
         fogRenderHeightPosition = serializedObject.FindProperty("fogRenderHeightPosition");
         textureBlendTime = serializedObject.FindProperty("textureBlendTime");
@@ -111,6 +122,10 @@ public class LookAtPointEditor : Editor
         exploredColor = serializedObject.FindProperty("exploredColor");
         fogMat = serializedObject.FindProperty("fogMat");
         fogShader = serializedObject.FindProperty("fogShader");
+        fogSpritePPU = serializedObject.FindProperty("fogSpritePPU");
+        fogSpriteSlicingSize = serializedObject.FindProperty("fogSpriteSlicingSize");
+        fogSpriteRenderLayer = serializedObject.FindProperty("fogSpriteRenderLayer");
+        fogSpriteRenderOrder = serializedObject.FindProperty("fogSpriteRenderOrder");
         fogFilterMode = serializedObject.FindProperty("fogFilterMode");
         heightObstacleMask = serializedObject.FindProperty("heightObstacleMask");
         heightRange = serializedObject.FindProperty("heightRange");
@@ -139,6 +154,7 @@ public class LookAtPointEditor : Editor
 
         GUILayout.Label("Render Options", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(drawMode, new GUIContent("Draw Mode", drawMode_tooltip));
+        EditorGUILayout.PropertyField(blendMode, new GUIContent("Blend Mode", blendMode_tooltip));
         EditorGUILayout.PropertyField(orientation, new GUIContent("Orientation", orientation_tooltip));
         EditorGUILayout.PropertyField(fogFilterMode, new GUIContent("Fog Filter Mode", fogFilterMode_tooltip));
         EditorGUILayout.PropertyField(textureQualityPerChunk, new GUIContent("Texture Quality", textureQualityPerChunk_tooltip));
@@ -157,6 +173,14 @@ public class LookAtPointEditor : Editor
             EditorGUILayout.PropertyField(Perspective3DRenderRotation, new GUIContent("Perspective 3D Mesh Rotation", Perspective3DRenderRotation_tooltip));
         else
             EditorGUILayout.PropertyField(Orthographic2DRenderRotation, new GUIContent("Orthographic 2D Mesh Rotation", Orthographic2DRenderRotation_tooltip));
+
+        GUILayout.Space(5f);
+
+        GUILayout.Label("Sprite Mode Options", EditorStyles.boldLabel);
+        EditorGUILayout.PropertyField(fogSpritePPU, new GUIContent("Fog Sprite PPU", fogSpritePPU_tooltip));
+        EditorGUILayout.PropertyField(fogSpriteSlicingSize, new GUIContent("Fog Sprite Slicing Size", fogSpriteSlicingSize_tooltip));
+        EditorGUILayout.PropertyField(fogSpriteRenderLayer, new GUIContent("Fog Sprite Render Layer", fogSpriteRenderLayer_tooltip));
+        EditorGUILayout.PropertyField(fogSpriteRenderOrder, new GUIContent("Fog Sprite Render Order", fogSpriteRenderOrder_tooltip));
 
         GUILayout.Space(5f);
 

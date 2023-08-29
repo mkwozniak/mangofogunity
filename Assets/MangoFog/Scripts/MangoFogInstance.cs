@@ -25,6 +25,7 @@ namespace MangoFog
 	{
 		MeshRenderer,
 		GPU,
+		Sprite,
 	}
 
 	public enum MangoFogChunkSquared
@@ -43,10 +44,14 @@ namespace MangoFog
 	[System.Serializable]
 	public struct MangoBufferData
 	{
-		public byte[] buffer;
-		public MangoBufferData(byte[] buffer)
+		public byte[] buffer0;
+		public byte[] buffer1;
+		public byte[] buffer2;
+		public MangoBufferData(byte[] buffer0, byte[] buffer1, byte[] buffer2)
 		{
-			this.buffer = buffer;
+			this.buffer0 = buffer0;
+			this.buffer1 = buffer1;
+			this.buffer2 = buffer2;
 		}
 	}
 
@@ -86,22 +91,48 @@ namespace MangoFog
 		[HideInInspector] public MangoDrawMode drawMode;
 
 		/// <summary>
+		/// Whether or not to blend the fog colors.
+		/// </summary>
+		[HideInInspector] public bool BlendMode;
+
+		/// <summary>
 		/// The renderer rotation for 3D perspective, change this if your custom mesh requires it.
 		/// </summary>
 		/// <returns></returns>
-		[HideInInspector] public Vector3 Perspective3DRenderRotation = new Vector3(90, 0, 0); //other quads/planes may use (-90, 180, 0), the default 3d quad is 90, 0, 0
+		[HideInInspector] public Vector3 Perspective3DRenderRotation = new Vector3(90, 0, 0); 
+		// other quads/planes may use (-90, 180, 0), the default 3d quad is 90, 0, 0
 
 		/// <summary>
 		/// The renderer rotation for 2D perspective, change this if your custom mesh requires it.
 		/// </summary>
 		/// <returns></returns>
-		[HideInInspector] public Vector3 Orthographic2DRenderRotation = new Vector3(0,0,0); //other quads/planes may use (-90, 0, 0), the default 2d quad is 0,0,0
-
+		[HideInInspector] public Vector3 Orthographic2DRenderRotation = new Vector3(0, 0, 0); 
+		// other quads/planes may use (-90, 0, 0), the default 2d quad is 0, 0, 0
 
 		/// <summary>
 		/// The mesh that the fog will be renderered on.
 		/// </summary>
 		[HideInInspector] public Mesh fogMesh;
+
+		/// <summary>
+		/// The PPU of the fog sprite when using Sprite render mode.
+		/// </summary>
+		[HideInInspector] public float fogSpritePPU;
+
+		/// <summary>
+		/// The slicing width and height of the fog sprite when using Sprite render mode.
+		/// </summary>
+		[HideInInspector] public Vector2 fogSpriteSlicingSize;
+
+		/// <summary>
+		/// The render layer of the fog sprite when using Sprite render mode.
+		/// </summary>
+		[HideInInspector] public string fogSpriteRenderLayer;
+
+		/// <summary>
+		/// The render order of the fog sprite when using Sprite render mode.
+		/// </summary>
+		[HideInInspector] public int fogSpriteRenderOrder;
 
 		/// <summary>
 		/// Enables the editor inspector options for the experimental chunk feature
@@ -314,7 +345,10 @@ namespace MangoFog
 			{
 				BinaryFormatter newFormatter = new BinaryFormatter();
 				FileStream fl = File.Open(Application.persistentDataPath + "/fogData" + id.ToString() + ".dat", FileMode.Open);
-				MangoBufferData data = new MangoBufferData(chunks[trueRootChunkPosition].GetRevealedBuffer());
+				MangoBufferData data = 
+					new MangoBufferData(chunks[trueRootChunkPosition].GetRevealedBuffer(), 
+					chunks[trueRootChunkPosition].GetSecondRevealedBuffer(),
+					chunks[trueRootChunkPosition].GetThirdRevealedBuffer());
 				newFormatter.Serialize(fl, data);
 				Debug.Log("Saved current buffer to slot " + id.ToString());
 				fl.Close();
@@ -323,7 +357,10 @@ namespace MangoFog
 			{
 				BinaryFormatter newFormatter = new BinaryFormatter();
 				FileStream fl = File.Create(Application.persistentDataPath + "/fogData" + id.ToString() + ".dat");
-				MangoBufferData data = new MangoBufferData(chunks[trueRootChunkPosition].GetRevealedBuffer());
+				MangoBufferData data = 
+					new MangoBufferData(chunks[trueRootChunkPosition].GetRevealedBuffer(), 
+					chunks[trueRootChunkPosition].GetSecondRevealedBuffer(),
+					chunks[trueRootChunkPosition].GetThirdRevealedBuffer());
 				newFormatter.Serialize(fl, data);
 				Debug.Log("Created and saved current buffer to slot " + id.ToString());
 				fl.Close();
@@ -345,11 +382,23 @@ namespace MangoFog
 
 			if (File.Exists(Application.persistentDataPath + "/fogData" + id.ToString() + ".dat"))
 			{
+				// stop thread and clear states
+				chunks[trueRootChunkPosition].StopThread();
+				chunks[trueRootChunkPosition].ClearStates();
+
+				// open file
 				BinaryFormatter newFormatter = new BinaryFormatter();
 				FileStream fl = File.Open(Application.persistentDataPath + "/fogData" + id.ToString() + ".dat", FileMode.Open);
 				MangoBufferData data = (MangoBufferData)newFormatter.Deserialize(fl);
-				chunks[trueRootChunkPosition].SetRevealedBuffer(data.buffer);
+
 				Debug.Log("Loaded buffer from slot " + id.ToString() + " to current ");
+
+				// start thread again
+				chunks[trueRootChunkPosition].StartChunk();
+
+				// set buffer and update texture
+				chunks[trueRootChunkPosition].SetRevealedBuffer(data.buffer0, data.buffer1, data.buffer2);
+				chunks[trueRootChunkPosition].EnqueueState(MangoFogState.UpdateTexture);
 				fl.Close();
 			}
 			else
@@ -389,12 +438,15 @@ namespace MangoFog
 			{
 				case MangoFogChunkSquared.One:
 					doChunks = false;
+					TotalSquaredSize = chunkSize;
 					break;
 				case MangoFogChunkSquared.TwoByTwo:
 					chunkSquared = 1;
+					TotalSquaredSize = chunkSize * 2;
 					break;
 				case MangoFogChunkSquared.FourByFour:
 					chunkSquared = 2;
+					TotalSquaredSize = chunkSize * 4;
 					break;
 			}
 			
@@ -455,9 +507,12 @@ namespace MangoFog
 
 			MangoFogChunk.changeStates = new int[chunksCreated];
 
-			//loop through chunks and start them.
+			// loop through chunks and start them.
 			foreach (KeyValuePair<Vector3, MangoFogChunk> chunk in chunks)
+			{
 				chunk.Value.StartChunk();
+			}
+
 
 			if (debugModeEnabled)
 				Debug.Log("Mango Fog Instance Generated Chunks.");
@@ -468,13 +523,15 @@ namespace MangoFog
 			GameObject chunkObj = Instantiate(new GameObject(), pos, Quaternion.identity, transform);
 			MangoFogChunk newFogChunk = chunkObj.AddComponent<MangoFogChunk>();
 			MangoFogRenderer newFogRenderer = chunkObj.AddComponent<MangoFogRenderer>();
-			//gives the new chunk a reference to its renderer
+			// gives the new chunk a reference to its renderer
 			newFogChunk.SetRenderer(newFogRenderer);
-			//inits the chunk
+			// inits the chunk
 			newFogChunk.Init();
 			newFogChunk.gameObject.SetActive(true);
-			//set the chunk id
+			// set the chunk id
 			newFogChunk.SetChunkID(chunksCreated);
+			// set the chunk blend mode 
+			newFogChunk.BlendMode = BlendMode;
 			//add the chunk to the dictionary
 			chunks.Add(pos, newFogChunk);
 			chunkObj.gameObject.name = "Mango Fog Chunk " + chunksCreated;

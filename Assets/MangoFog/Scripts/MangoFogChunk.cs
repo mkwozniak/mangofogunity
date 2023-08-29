@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
@@ -6,45 +7,47 @@ using UnityEngine;
 namespace MangoFog
 {
 	public class MangoFogChunk : MonoBehaviour
-    {		
-		//positions and transform
-		protected int chunkID;
-		protected Transform chunkTransform;
-		protected Vector3 chunkOrigin = Vector3.zero;
-		protected Vector3 chunkScale = Vector3.one;
-		protected Vector3 chunk3DSize = Vector3.one;
-		protected Vector3 chunkPosition;
-		protected int textureSizeSquared;
+    {
+		#region Public Members
 
-		// Color buffers -- prepared on the worker thread.
-		protected Color32[] buffer0;
-		protected Color32[] buffer1;
-		protected Color32[] buffer2;
+		/// <summary>
+		/// The fog chunk generated texture
+		/// </summary>
+		public Texture2D texture { get { return fogTexture; } }
 
-		// texture
-		protected Texture2D fogTexture;
+		/// <summary>
+		/// Factor used to blend between the texture.
+		/// </summary>
+		public float BlendFactor { get { return blendFactor; } }
 
-		//bounding box
-		protected Bounds bounds;
+		/// <summary>
+		/// Returns the elapsed time since running the chunk.
+		/// </summary>
+		public float Elapsed{ get { return elapsed; } }
 
-		//renderer
-		protected MangoFogRenderer fogRenderer;
+		/// <summary>
+		/// Returns the chunks texture size.
+		/// </summary>
+		public int TextureSize { get { return textureSize; } }
 
-		//the orientation
-		protected MangoFogOrientation orientation;		
+		/// <summary>
+		/// Returns the chunks object size.
+		/// </summary>
+		public float ChunkSize { get { return chunkSize; } }
 
-		// timers and states
-		protected float blendFactor = 0f;
-		protected float nextUpdate = 0f;
-		protected float elapsed = 0f;
-		protected MangoFogState fogState = MangoFogState.Blending;
-		protected int[,] mHeights;
-		bool chunkActive = false;
-		bool clampBlendFactor = false;
+		/// <summary>
+		/// Whether or not to blend the fog colors.
+		/// </summary>
+		public bool BlendMode = true;
 
-		//the fog processing thread for this chunk
-		protected Thread fogThread;
-		protected volatile bool doThread;
+		/// <summary>
+		/// Experimental used for multiple chunks
+		/// </summary>
+		public static int[] changeStates;
+
+		#endregion
+
+		#region Private Members
 
 		/// <summary>
 		/// Size of your world in units. For example, if you have a 256x256 terrain, then just leave this at '256'.
@@ -73,33 +76,65 @@ namespace MangoFog
 		/// </summary>
 		protected int blurIterations = 2;
 
-		/// <summary>
-		/// The fog chunk generated texture
-		/// </summary>
-		public Texture2D texture { get { return fogTexture; } }
+		// positions and transform
+		protected int chunkID;
+		protected Transform chunkTransform;
+		protected Vector3 chunkOrigin = Vector3.zero;
+		protected Vector3 chunkScale = Vector3.one;
+		protected Vector3 chunk3DSize = Vector3.one;
+		protected Vector3 chunkPosition;
+		protected int textureSizeSquared;
 
-		/// <summary>
-		/// Factor used to blend between the texture.
-		/// </summary>
-		public float BlendFactor { get { return blendFactor; } }
+		// Color buffers -- prepared on the worker thread.
+		protected Color32[] buffer0;
+		protected Color32[] buffer1;
+		protected Color32[] buffer2;
 
-		/// <summary>
-		/// Returns the elapsed time since running the chunk.
-		/// </summary>
-		public float Elapsed{ get { return elapsed; } }
+		// texture
+		protected Texture2D fogTexture;
 
-		/// <summary>
-		/// Experimental used for multiple chunks
-		/// </summary>
-		public static int[] changeStates;
+		// bounding box
+		protected Bounds bounds;
+
+		// mango renderer reference
+		protected MangoFogRenderer fogRenderer;
+
+		// the orientation
+		protected MangoFogOrientation orientation;
+
+		// timers and states
+		protected float blendFactor = 0f;
+		protected float nextUpdate = 0f;
+		protected float elapsed = 0f;
+		protected int[,] mHeights;
+		bool chunkActive = false;
+		bool clampBlendFactor = false;
+
+		// the fog processing thread for this chunk
+		protected Thread fogThread;
+		protected volatile bool doThread;
+		protected ConcurrentQueue<MangoFogState> _nextThreadStates = new ConcurrentQueue<MangoFogState>();
+
+		#endregion
+
+		#region Public Methods
 
 		public bool ChunkActive() { return chunkActive; }
 		public void SetChunkID(int id) { chunkID = id; }
 		public int GetChunkID() { return chunkID; }
-		public MangoFogState GetFogState() { return fogState; }
 		public int GetChangeState() { return changeStates[chunkID]; }
 		public MangoFogRenderer GetRenderer() { return fogRenderer; }
 		public void SetRenderer(MangoFogRenderer renderer) { fogRenderer = renderer; }
+
+		public void EnqueueState(MangoFogState state)
+		{
+			_nextThreadStates.Enqueue(state);
+		}
+
+		public void ClearStates()
+		{
+			_nextThreadStates = new ConcurrentQueue<MangoFogState>();
+		}
 
 
 		/// <summary>
@@ -155,6 +190,7 @@ namespace MangoFog
 			buffer0 = new Color32[textureSizeSquared];
 			buffer1 = new Color32[textureSizeSquared];
 			buffer2 = new Color32[textureSizeSquared];
+			blendFactor = 0f;
 
 			bounds = orientation == MangoFogOrientation.Perspective3D ?
 				new Bounds(transform.position, new Vector3(chunkSize * boundsMultiplier.x, (fogRenderHeightPosition + boundsDepth), chunkSize * boundsMultiplier.z)) :
@@ -173,7 +209,7 @@ namespace MangoFog
 		{
 			//buffer update at the start
 			changeStates[chunkID] = 1;
-			fogState = MangoFogState.Blending;
+			_nextThreadStates.Enqueue(MangoFogState.Blending);
 
 			//enables the system to start updating
 			chunkActive = true;
@@ -188,7 +224,7 @@ namespace MangoFog
 		/// <summary>
 		/// Ensure that the thread gets terminated.
 		/// </summary>
-		public void Dispose()
+		public void Dispose(bool withObject = true)
 		{
 			if (fogThread != null)
 			{
@@ -207,13 +243,97 @@ namespace MangoFog
 				fogTexture = null;
 			}
 
-			UnityEngine.Object.Destroy(gameObject);
+			if(withObject)
+			{
+				UnityEngine.Object.Destroy(gameObject);
+			}
+		}
+
+		public void StopThread()
+		{
+			if (fogThread != null)
+			{
+				doThread = false;
+				fogThread.Join();
+				fogThread = null;
+			}
+
+			buffer0 = null;
+			buffer1 = null;
+			buffer2 = null;
 		}
 
 		// disposes the thread and destroys the chunk
 		public void DestroySelf()
 		{
 			Dispose();
+		}
+
+		/// <summary>
+		/// Retrieve the revealed buffer
+		/// </summary>
+		public byte[] GetRevealedBuffer()
+		{
+			if (buffer0 == null) return null;
+			int size = textureSize * textureSize;
+			byte[] buff = new byte[size];
+			for (int i = 0; i < size; ++i) buff[i] = buffer0[i].g;
+			return buff;
+		}
+
+		/// <summary>
+		/// Retrieve the revealed buffer
+		/// </summary>
+		public byte[] GetSecondRevealedBuffer()
+		{
+			if (buffer1 == null) return null;
+			int size = textureSize * textureSize;
+			byte[] buff = new byte[size];
+			for (int i = 0; i < size; ++i) buff[i] = buffer1[i].g;
+			return buff;
+		}
+
+		/// <summary>
+		/// Retrieve the revealed buffer
+		/// </summary>
+		public byte[] GetThirdRevealedBuffer()
+		{
+			if (buffer2 == null) return null;
+			int size = textureSize * textureSize;
+			byte[] buff = new byte[size];
+			for (int i = 0; i < size; ++i) buff[i] = buffer2[i].g;
+			return buff;
+		}
+
+		/// <summary>
+		/// Reveal the area, given the specified array of bytes.
+		/// </summary>
+		public void SetRevealedBuffer(byte[] arr, byte[] arr2, byte[] arr3)
+		{
+			if (arr == null) return;
+			int mySize = textureSize * textureSize;
+
+			if (arr.Length != mySize || arr2.Length != mySize || arr3.Length != mySize)
+			{
+				Debug.LogError("Buffer size mismatch. Fog is " + mySize + 
+					", but passed arrays are " + arr.Length + " and " + arr2.Length + " and " + arr3.Length);
+			}
+			else
+			{
+				if (buffer0 == null)
+				{
+					buffer0 = new Color32[mySize];
+					buffer1 = new Color32[mySize];
+					buffer2 = new Color32[mySize];
+				}
+
+				for (int i = 0; i < mySize; ++i)
+				{
+					buffer0[i].g = arr[i];
+					buffer1[i].g = arr2[i];
+					buffer2[i].g = arr3[i];
+				}
+			}
 		}
 
 		/// <summary>
@@ -248,7 +368,7 @@ namespace MangoFog
 		/// <summary>
 		/// Determine if the specified point is visible or not using line-of-sight checks.
 		/// </summary>
-		bool IsVisible(int sx, int sy, int fx, int fy, float outer, int sightHeight, int variance, Quaternion rot, float fovCosine, bool reverseDir)
+		public bool IsVisible(int sx, int sy, int fx, int fy, float outer, int sightHeight, int variance, Quaternion rot, float fovCosine, bool reverseDir)
 		{
 			int dx = Mathf.Abs(fx - sx);
 			int dy = Mathf.Abs(fy - sy);
@@ -343,41 +463,6 @@ namespace MangoFog
 		}
 
 		/// <summary>
-		/// Updates the fog chunk states. The chunk will update its buffer and texture once at the start.
-		/// It will then be in the idle state and check for revealers within its bounds moving.
-		/// If a revealer within its bounds changes position, it will then update the buffer and texture.
-		/// This avoids needless buffer and texture updating when nothing in the fog of war chunk has changed.
-		/// </summary>
-		protected void Update()
-		{
-			if (!chunkActive)
-				return;
-
-			if (clampBlendFactor)
-			{
-				if (textureBlendTime > 0f)
-					blendFactor = Mathf.Clamp01(blendFactor + Time.deltaTime / textureBlendTime);
-				else blendFactor = 1f;
-			}
-
-			//will it blend?
-			if (fogState == MangoFogState.Blending)
-			{
-				float time = Time.time;
-				if (nextUpdate < time)
-				{
-					nextUpdate = time + updateFrequency;
-					fogState = MangoFogState.NeedUpdate;
-				}
-			}
-			//the buffer was updated, update the texture
-			else if (fogState != MangoFogState.NeedUpdate)
-			{
-				UpdateTexture();
-			}
-		}
-
-		/// <summary>
 		/// Convert the specified height into the internal integer representation. Integer checks are much faster than floats.
 		/// </summary>
 		public int WorldToGridHeight(float height)
@@ -417,39 +502,88 @@ namespace MangoFog
 				{
 					pos.x = chunkOrigin.x + x * texToWorld;
 
-					if (MangoFogInstance.Instance.heightObstacleMask != 0)
+					if (MangoFogInstance.Instance.heightObstacleMask == 0)
+						continue;
+
+					RaycastHit hit;
+					if (orientation == MangoFogOrientation.Perspective3D)
 					{
-						RaycastHit hit;
-						if(orientation == MangoFogOrientation.Perspective3D)
+						bool useSphereCast = MangoFogInstance.Instance.chunkLOSRaycastRadius > 0f;
+						if (useSphereCast)
 						{
-							bool useSphereCast = MangoFogInstance.Instance.chunkLOSRaycastRadius > 0f;
-							if (useSphereCast)
+							if (Physics.SphereCast(new Ray(pos, Vector3.down), MangoFogInstance.Instance.chunkLOSRaycastRadius, out hit, chunk3DSize.y, MangoFogInstance.Instance.heightObstacleMask))
 							{
-								if (Physics.SphereCast(new Ray(pos, Vector3.down), MangoFogInstance.Instance.chunkLOSRaycastRadius, out hit, chunk3DSize.y, MangoFogInstance.Instance.heightObstacleMask))
-								{
-									mHeights[x, z] = WorldToGridHeight(pos.y - hit.distance - MangoFogInstance.Instance.chunkLOSRaycastRadius);
-									continue;
-								}
-							}
-							else if (Physics.Raycast(new Ray(pos, Vector3.down), out hit, Mathf.Infinity, MangoFogInstance.Instance.heightObstacleMask))
-							{
-								mHeights[x, z] = WorldToGridHeight(pos.y - hit.distance);
+								mHeights[x, z] = WorldToGridHeight(pos.y - hit.distance - MangoFogInstance.Instance.chunkLOSRaycastRadius);
 								continue;
 							}
 						}
-						else 
+						else if (Physics.Raycast(new Ray(pos, Vector3.down), out hit, Mathf.Infinity, MangoFogInstance.Instance.heightObstacleMask))
 						{
-							RaycastHit2D hit2d;
-							hit2d = Physics2D.Raycast(pos, Vector3.forward, Mathf.Infinity, MangoFogInstance.Instance.heightObstacleMask);
-							if (hit2d.collider)
-							{
-								mHeights[x, z] = WorldToGridHeight(pos.z - hit2d.distance - MangoFogInstance.Instance.chunkLOSRaycastRadius);
-								continue;
-							}
+							mHeights[x, z] = WorldToGridHeight(pos.y - hit.distance);
+							continue;
+						}
+					}
+					else
+					{
+						RaycastHit2D hit2d;
+						hit2d = Physics2D.Raycast(pos, Vector3.forward, Mathf.Infinity, MangoFogInstance.Instance.heightObstacleMask);
+						if (hit2d.collider)
+						{
+							mHeights[x, z] = WorldToGridHeight(pos.z - hit2d.distance - MangoFogInstance.Instance.chunkLOSRaycastRadius);
+							continue;
 						}
 					}
 					mHeights[x, z] = 0;
 				}
+			}
+		}
+
+		#endregion
+
+		#region Private Methods
+
+		/// <summary>
+		/// Updates the fog chunk states. The chunk will update its buffer and texture once at the start.
+		/// It will then be in the idle state and check for revealers within its bounds moving.
+		/// If a revealer within its bounds changes position, it will then update the buffer and texture.
+		/// This avoids needless buffer and texture updating when nothing in the fog of war chunk has changed.
+		/// </summary>
+		protected void Update()
+		{
+			if (!chunkActive)
+				return;
+
+			if (clampBlendFactor)
+			{
+				if (textureBlendTime > 0f)
+					blendFactor = Mathf.Clamp01(blendFactor + Time.deltaTime / textureBlendTime);
+				else blendFactor = 1f;
+			}
+
+			MangoFogState nextState;
+			bool hasNextState = _nextThreadStates.TryPeek(out nextState);
+			if(!hasNextState) // no next state, things went horribly wrong 
+			{
+				Debug.LogWarning("MangoFogChunk has no next state!");
+				return;
+			}
+
+			// will it blend?
+			if (nextState == MangoFogState.Blending)
+			{
+				float time = Time.time;
+				if (nextUpdate < time)
+				{
+					nextUpdate = time + updateFrequency;
+					_nextThreadStates.TryDequeue(out nextState);
+					_nextThreadStates.Enqueue(MangoFogState.NeedUpdate);
+				}
+			}
+			// the buffer was updated, update the texture
+			else if (nextState == MangoFogState.UpdateTexture)
+			{
+				_nextThreadStates.TryDequeue(out nextState);
+				UpdateTexture();
 			}
 		}
 
@@ -465,7 +599,15 @@ namespace MangoFog
 			// Clear the buffer's red channel (channel used for current visibility -- it's updated right after)
 			for (int i = 0, imax = buffer0.Length; i < imax; ++i)
 			{
-				buffer0[i] = Color32.Lerp(buffer0[i], buffer1[i], factor);
+				if(BlendMode)
+				{
+					buffer0[i] = buffer1[i];
+				}
+				else
+				{
+					buffer0[i] = Color32.Lerp(buffer0[i], buffer1[i], factor);
+				}
+
 				buffer1[i].r = 0;
 			}
 
@@ -565,7 +707,7 @@ namespace MangoFog
 
 						if (x > -1 && x < textureSize)
 							// Reveal this pixel
-							if (dist < radiusSqr)
+							if (dist <= radiusSqr)
 								buffer1[x + yw].r = 255;
 					}
 				}
@@ -725,14 +867,14 @@ namespace MangoFog
 				fogTexture.SetPixels32(buffer0);
 				fogTexture.filterMode = MangoFogInstance.Instance.fogFilterMode;
 				fogTexture.Apply();
-				fogState = MangoFogState.Blending;
+				_nextThreadStates.Enqueue(MangoFogState.Blending);
 			}
-			else if (fogState == MangoFogState.UpdateTexture)
+			else
 			{
 				fogTexture.SetPixels32(buffer0);
 				fogTexture.Apply();
 				blendFactor = 0f;
-				fogState = MangoFogState.Blending;
+				_nextThreadStates.Enqueue(MangoFogState.Blending);
 			}
 
 			//let it blend until the chunk needs to be updated again
@@ -749,18 +891,28 @@ namespace MangoFog
 
 			while (doThread)
 			{
+				MangoFogState nextState;
+				bool hasNextState = _nextThreadStates.TryPeek(out nextState);
+				if (!hasNextState) // no next state, things went horribly wrong 
+				{
+					Thread.Sleep(1);
+				}
+
 				//make sure the buffer needs updating and revealer changes were made
-				if (fogState == MangoFogState.NeedUpdate)
+				if (nextState == MangoFogState.NeedUpdate)
 				{
 					sw.Reset();
 					sw.Start();
 					UpdateBuffer();
 					sw.Stop();
 					elapsed = 0.001f * (float)sw.ElapsedMilliseconds;
-					//buffer was updated, update the texture
-					fogState = MangoFogState.UpdateTexture;
+					_nextThreadStates.TryDequeue(out nextState);
+
+					// buffer was updated, update the texture
+					_nextThreadStates.Enqueue(MangoFogState.UpdateTexture);
 				}
-				Thread.Sleep(1);
+
+				//Thread.Sleep(1);
 			}
 			#if UNITY_EDITOR
 				Debug.Log("The thread has exited.");
@@ -781,45 +933,7 @@ namespace MangoFog
 				Gizmos.DrawWireCube(new Vector3(0f, 0f, 0f), new Vector3(chunkSize, chunkSize, 0f));
 		}
 
-		/// <summary>
-		/// Retrieve the revealed buffer
-		/// </summary>
-		public byte[] GetRevealedBuffer()
-		{
-			if (buffer1 == null) return null;
-			int size = textureSize * textureSize;
-			byte[] buff = new byte[size];
-			for (int i = 0; i < size; ++i) buff[i] = buffer1[i].g;
-			return buff;
-		}
-
-		/// <summary>
-		/// Reveal the area, given the specified array of bytes.
-		/// </summary>
-		public void SetRevealedBuffer(byte[] arr)
-		{
-			if (arr == null) return;
-			int mySize = textureSize * textureSize;
-
-			if (arr.Length != mySize)
-			{
-				Debug.LogError("Buffer size mismatch. Fog is " + mySize + ", but passed array is " + arr.Length);
-			}
-			else
-			{
-				if (buffer0 == null)
-				{
-					buffer0 = new Color32[mySize];
-					buffer1 = new Color32[mySize];
-				}
-
-				for (int i = 0; i < mySize; ++i)
-				{
-					buffer0[i].g = arr[i];
-					buffer1[i].g = arr[i];
-				}
-			}
-		}
+		#endregion
 	}
 
 }

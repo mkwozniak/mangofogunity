@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657844, g: 0.49641222, b: 0.57481694, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -355,9 +355,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   debugModeEnabled: 1
+  drawMode: 0
+  BlendMode: 1
   Perspective3DRenderRotation: {x: 90, y: 0, z: 0}
   Orthographic2DRenderRotation: {x: 0, y: 0, z: 0}
   fogMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+  fogSpritePPU: 0
+  fogSpriteSlicingSize: {x: 0, y: 0}
+  fogSpriteRenderLayer: 
+  fogSpriteRenderOrder: 0
   doExperimentalChunkFeature: 1
   meshScaleDivisor: 1
   meshScalePostMultiplier: 1
@@ -377,6 +383,8 @@ MonoBehaviour:
   textureBlendTime: 1
   blurIterations: 3
   updateFrequency: 0.1
+  clampBlendFactorToTextureTime: 0
+  TotalSquaredSize: 0
   rootChunkPosition: {x: 256, y: 0, z: 256}
   chunkBoundsMultiplier: {x: 1, y: 1, z: 1}
   chunkSeamBufferDelay: 0.5
@@ -2579,7 +2587,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealerType: 0
-  viewRadius: 42
+  viewRadius: 86
   LOSInnerRadius: 56
   LOSOuterRadius: 96
   reverseLOSDirection: 0

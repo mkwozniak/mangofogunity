@@ -18,7 +18,7 @@ namespace MangoFog
 			if (chunk)
 			{
                 threadID.text = "Chunk ID: " + chunk.GetChunkID().ToString();
-                threadState.text = "State: " + chunk.GetFogState().ToString();
+                //threadState.text = "State: " + chunk.GetFogState().ToString();
                 changeState.text = "Change: " + chunk.GetChangeState().ToString();
                 numRevealersText.text = "Revealers: Unavailable" ;
 			}

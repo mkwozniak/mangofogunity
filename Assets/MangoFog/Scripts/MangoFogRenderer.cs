@@ -27,6 +27,11 @@ namespace MangoFog
         protected Mesh mesh;
 
         /// <summary>
+        /// The sprite renderer when using Sprite draw mode.
+        /// </summary>
+        protected SpriteRenderer spriteRenderer;
+
+        /// <summary>
         /// The material that will be copied to and rendered
         /// </summary>
         [SerializeField] protected Material mat;
@@ -46,17 +51,26 @@ namespace MangoFog
         /// </summary>
         protected int drawMode = 0;
 
-        //variables needed to construct proper matrix for gpu draw mode
+        // members to construct proper matrix for gpu draw mode
         protected Vector3 meshPosition;
         protected Vector3 meshScale;
         protected Quaternion meshRotation;
         protected Matrix4x4 meshMatrix;
         protected bool didConstructMatrix = false;
 
+        // members to create sprite fog
+        protected float _spriteUpdateTime = 0f;
+        protected float _spriteUpdateTimer = 0f;
+        protected Rect spriteRect;
+        protected float _spritePPU;
+        protected Vector2 _spriteSize;
+
         public MeshRenderer GetMeshRenderer() { return render; }
         public MeshFilter GetMeshFilter() { return filter; }
         public void SetChunk(MangoFogChunk chunk) { this.chunk = chunk; }
         public void SetMesh(Mesh mesh) { this.mesh = mesh; }
+
+        public void SetSpriteUpdateTime(float time) { _spriteUpdateTime = time; }
 
         public void DestroySelf()
         {
@@ -66,6 +80,14 @@ namespace MangoFog
                     Destroy(render);
                 if (filter)
                     Destroy(filter);
+                return;
+            }
+
+            if (drawMode == 2)
+            {
+                if (spriteRenderer)
+                    Destroy(spriteRenderer);
+                return;
             }
         }
 
@@ -85,7 +107,10 @@ namespace MangoFog
                 case MangoDrawMode.GPU:
                     drawMode = 1;
                     break;
-			}
+                case MangoDrawMode.Sprite:
+                    drawMode = 2;
+                    break;
+            }
 		}
 
         public void SetColors(Color unexploredColor, Color exploredColor)
@@ -98,7 +123,7 @@ namespace MangoFog
         {
             if (mat == null)
             {
-                if (drawMode == 0)
+                if (drawMode == 0) // mesh mode
                 {
                     filter = gameObject.AddComponent<MeshFilter>();
                     render = gameObject.AddComponent<MeshRenderer>();
@@ -119,11 +144,23 @@ namespace MangoFog
                         mat = render.sharedMaterial;
                     }
                 }
-                else
+                else if (drawMode == 1) // gpu mode
                 {
                     //copy the fog material and shader directly into the material
                     mat = new Material(MangoFogInstance.Instance.fogShader);
                     mat.CopyPropertiesFromMaterial(MangoFogInstance.Instance.fogMat);
+                }
+                else if (drawMode == 2) // sprite mode
+                {
+                    mat = new Material(MangoFogInstance.Instance.fogShader);
+                    spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
+                    spriteRenderer.material = mat;
+                    spriteRenderer.sortingLayerName = MangoFogInstance.Instance.fogSpriteRenderLayer;
+                    spriteRenderer.sortingOrder = MangoFogInstance.Instance.fogSpriteRenderOrder;
+                    spriteRenderer.drawMode = SpriteDrawMode.Sliced;
+                    spriteRect = new Rect(0, 0, chunk.TextureSize, chunk.TextureSize);
+                    _spriteSize = MangoFogInstance.Instance.fogSpriteSlicingSize;
+                    _spritePPU = MangoFogInstance.Instance.fogSpritePPU;
                 }
             }
 
@@ -135,7 +172,7 @@ namespace MangoFog
         }
 
         /// <summary>
-        /// Called when draw mode is MeshRenderer.
+        /// Called when draw mode is MeshRenderer or Sprite.
         /// </summary>
         protected void OnWillRenderObject()
         {
@@ -156,11 +193,9 @@ namespace MangoFog
             }
         }
 
-        /// <summary>
-        /// Executed when draw mode is GPU.
-        /// </summary>
 		protected void Update()
 		{
+            // gpu draw mode
             if (drawMode == 1 && didConstructMatrix)
 			{
                 if (chunk)
@@ -178,7 +213,23 @@ namespace MangoFog
                         mat.SetColor("_Explored", exploredColor);
                     }
                 }
+
                 Graphics.DrawMesh(mesh, meshMatrix, mat, 0);
+                return;
+            }
+
+            // sprite draw mode
+            if (drawMode == 2)
+            {
+                _spriteUpdateTimer += Time.deltaTime;
+                if (_spriteUpdateTimer > _spriteUpdateTime)
+				{
+                    spriteRenderer.sprite = Sprite.Create(chunk.texture, spriteRect, new Vector2(0.5f, 0.5f), _spritePPU, 0, SpriteMeshType.FullRect);
+                    spriteRenderer.size = _spriteSize;
+                    _spriteUpdateTime = 0f;
+                }
+
+                return;
             }
         }
 

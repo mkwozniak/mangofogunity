@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657844, g: 0.49641222, b: 0.57481694, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -301,9 +301,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   debugModeEnabled: 1
+  drawMode: 0
+  BlendMode: 1
   Perspective3DRenderRotation: {x: 90, y: 0, z: 0}
   Orthographic2DRenderRotation: {x: 0, y: 0, z: 0}
   fogMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+  fogSpritePPU: 0
+  fogSpriteSlicingSize: {x: 0, y: 0}
+  fogSpriteRenderLayer: 
+  fogSpriteRenderOrder: 0
   doExperimentalChunkFeature: 0
   meshScaleDivisor: 1
   meshScalePostMultiplier: 1
@@ -790,10 +796,10 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.5
-  m_Speed: 30
-  m_Acceleration: 20
+  m_Speed: 100
+  m_Acceleration: 70
   avoidancePriority: 50
-  m_AngularSpeed: 300
+  m_AngularSpeed: 900
   m_StoppingDistance: 0
   m_AutoTraverseOffMeshLink: 1
   m_AutoBraking: 1
