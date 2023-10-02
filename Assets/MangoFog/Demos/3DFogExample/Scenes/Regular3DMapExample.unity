@@ -302,7 +302,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   debugModeEnabled: 1
   drawMode: 0
-  BlendMode: 1
   Perspective3DRenderRotation: {x: 90, y: 0, z: 0}
   Orthographic2DRenderRotation: {x: 0, y: 0, z: 0}
   fogMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}

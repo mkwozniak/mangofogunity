@@ -11,7 +11,6 @@ public class LookAtPointEditor : Editor
 
     string drawMode_tooltip = "The draw mode of the fog. MeshRenderer mode will create a MeshFilter and MeshRenderer component and render it through a gameobject. \n" +
     "GPU mode will render the mesh and material directly to the GPU without adding components.";
-    string blendMode_tooltip = "Whether or not to blend the fog colors.";
     string textureBlendTime_tooltip = "How long it takes for textures to blend from one to another.";
     string fogRenderHeightPosition_tooltip = "The render height of the fog. This is the y axis in 3D and the z axis in 2D. \n" +
         "3D Recommended Value: 1 \n" +
@@ -61,8 +60,8 @@ public class LookAtPointEditor : Editor
     string Orthographic2DRenderRotation_tooltip = "The renderer rotation for 2D perspective, change this if your custom mesh requires it. \n" +
         "Default Value for Unity Quad: (0, 0, 0)";
 
+    SerializedProperty chunkPrefab;
     SerializedProperty drawMode;
-    SerializedProperty blendMode;
     SerializedProperty textureBlendTime;
     SerializedProperty meshScaleDivisor;
     SerializedProperty meshScalePostMultiplier;
@@ -101,8 +100,8 @@ public class LookAtPointEditor : Editor
     void OnEnable()
     {
         targ = (MangoFogInstance)target;
+        chunkPrefab = serializedObject.FindProperty("chunkPrefab");
         drawMode = serializedObject.FindProperty("drawMode");
-        blendMode = serializedObject.FindProperty("BlendMode");
         orientation = serializedObject.FindProperty("orientation");
         fogRenderHeightPosition = serializedObject.FindProperty("fogRenderHeightPosition");
         textureBlendTime = serializedObject.FindProperty("textureBlendTime");
@@ -145,6 +144,8 @@ public class LookAtPointEditor : Editor
         base.OnInspectorGUI();
         serializedObject.Update();
 
+        EditorGUILayout.PropertyField(chunkPrefab, new GUIContent("Chunk Prefab", "The Chunk Prefab"));
+
         GUILayout.Label("Material & Shader Options", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(unexploredColor, new GUIContent("Unexplored Color", unexploredColor_tooltip));
         EditorGUILayout.PropertyField(exploredColor, new GUIContent("Explored Color", exploredColor_tooltip));
@@ -154,7 +155,6 @@ public class LookAtPointEditor : Editor
 
         GUILayout.Label("Render Options", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(drawMode, new GUIContent("Draw Mode", drawMode_tooltip));
-        EditorGUILayout.PropertyField(blendMode, new GUIContent("Blend Mode", blendMode_tooltip));
         EditorGUILayout.PropertyField(orientation, new GUIContent("Orientation", orientation_tooltip));
         EditorGUILayout.PropertyField(fogFilterMode, new GUIContent("Fog Filter Mode", fogFilterMode_tooltip));
         EditorGUILayout.PropertyField(textureQualityPerChunk, new GUIContent("Texture Quality", textureQualityPerChunk_tooltip));

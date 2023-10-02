@@ -41,17 +41,25 @@ namespace MangoFog
 		LOS,
 	}
 
+	public enum BufferType
+	{
+		Fog,
+		Blend,
+		Blur,
+	}
+
 	[System.Serializable]
 	public struct MangoBufferData
 	{
-		public byte[] buffer0;
-		public byte[] buffer1;
-		public byte[] buffer2;
+		public byte[] fogBuffer;
+		public byte[] blendBuffer;
+		public byte[] blurBuffer;
+
 		public MangoBufferData(byte[] buffer0, byte[] buffer1, byte[] buffer2)
 		{
-			this.buffer0 = buffer0;
-			this.buffer1 = buffer1;
-			this.buffer2 = buffer2;
+			this.fogBuffer = buffer0;
+			this.blendBuffer = buffer1;
+			this.blurBuffer = buffer2; 
 		}
 	}
 
@@ -65,7 +73,8 @@ namespace MangoFog
 		/// <summary>
 		/// The chunks dictionary
 		/// </summary>
-		protected Dictionary<Vector3, MangoFogChunk> chunks = new Dictionary<Vector3, MangoFogChunk>();
+		protected Dictionary<Vector3, MangoFogChunk> chunksByPosition = new Dictionary<Vector3, MangoFogChunk>();
+		protected Dictionary<int, MangoFogChunk> chunksByID = new Dictionary<int, MangoFogChunk>();
 
 		//the dictionary to register revealers
 		public static Dictionary<int, MangoFogRevealer> revealerRegister = new Dictionary<int, MangoFogRevealer>();
@@ -91,11 +100,6 @@ namespace MangoFog
 		[HideInInspector] public MangoDrawMode drawMode;
 
 		/// <summary>
-		/// Whether or not to blend the fog colors.
-		/// </summary>
-		[HideInInspector] public bool BlendMode;
-
-		/// <summary>
 		/// The renderer rotation for 3D perspective, change this if your custom mesh requires it.
 		/// </summary>
 		/// <returns></returns>
@@ -106,7 +110,7 @@ namespace MangoFog
 		/// The renderer rotation for 2D perspective, change this if your custom mesh requires it.
 		/// </summary>
 		/// <returns></returns>
-		[HideInInspector] public Vector3 Orthographic2DRenderRotation = new Vector3(0, 0, 0); 
+		[HideInInspector] public Vector3 Orthographic2DRenderRotation = new Vector3(0, 0, 0);
 		// other quads/planes may use (-90, 0, 0), the default 2d quad is 0, 0, 0
 
 		/// <summary>
@@ -284,7 +288,9 @@ namespace MangoFog
 		/// <summary>
 		/// The root chunk prefab to Instantiate from.
 		/// </summary>
-		[HideInInspector] public MangoFogChunk chunkPrefab;
+		[HideInInspector] public GameObject chunkPrefab;
+
+		#region Public Methods
 
 		public int GetTotalRevealers() { return revealers.size; }
 
@@ -337,18 +343,18 @@ namespace MangoFog
 		{
 			if (DoChunks()) 
 			{
-				Debug.LogWarning("Saving / Loading multiple chunk buffers doesn't work yet :( "); 
+				Debug.LogWarning("Saving / Loading multiple chunk buffers is not yet supported."); 
 				return; 
 			}
+
+			MangoFogChunk chunk = chunksByPosition[trueRootChunkPosition];
 
 			if (File.Exists(Application.persistentDataPath + "/fogData" + id.ToString() + ".dat"))
 			{
 				BinaryFormatter newFormatter = new BinaryFormatter();
 				FileStream fl = File.Open(Application.persistentDataPath + "/fogData" + id.ToString() + ".dat", FileMode.Open);
 				MangoBufferData data = 
-					new MangoBufferData(chunks[trueRootChunkPosition].GetRevealedBuffer(), 
-					chunks[trueRootChunkPosition].GetSecondRevealedBuffer(),
-					chunks[trueRootChunkPosition].GetThirdRevealedBuffer());
+					new MangoBufferData(chunk.GetBuffer(BufferType.Fog), chunk.GetBuffer(BufferType.Blend), chunk.GetBuffer(BufferType.Blur));
 				newFormatter.Serialize(fl, data);
 				Debug.Log("Saved current buffer to slot " + id.ToString());
 				fl.Close();
@@ -358,9 +364,7 @@ namespace MangoFog
 				BinaryFormatter newFormatter = new BinaryFormatter();
 				FileStream fl = File.Create(Application.persistentDataPath + "/fogData" + id.ToString() + ".dat");
 				MangoBufferData data = 
-					new MangoBufferData(chunks[trueRootChunkPosition].GetRevealedBuffer(), 
-					chunks[trueRootChunkPosition].GetSecondRevealedBuffer(),
-					chunks[trueRootChunkPosition].GetThirdRevealedBuffer());
+					new MangoBufferData(chunk.GetBuffer(BufferType.Fog), chunk.GetBuffer(BufferType.Blend), chunk.GetBuffer(BufferType.Blur));
 				newFormatter.Serialize(fl, data);
 				Debug.Log("Created and saved current buffer to slot " + id.ToString());
 				fl.Close();
@@ -383,8 +387,8 @@ namespace MangoFog
 			if (File.Exists(Application.persistentDataPath + "/fogData" + id.ToString() + ".dat"))
 			{
 				// stop thread and clear states
-				chunks[trueRootChunkPosition].StopThread();
-				chunks[trueRootChunkPosition].ClearStates();
+				chunksByPosition[trueRootChunkPosition].StopChunk();
+				chunksByPosition[trueRootChunkPosition].ClearStates();
 
 				// open file
 				BinaryFormatter newFormatter = new BinaryFormatter();
@@ -394,11 +398,11 @@ namespace MangoFog
 				Debug.Log("Loaded buffer from slot " + id.ToString() + " to current ");
 
 				// start thread again
-				chunks[trueRootChunkPosition].StartChunk();
+				chunksByPosition[trueRootChunkPosition].StartChunk();
 
 				// set buffer and update texture
-				chunks[trueRootChunkPosition].SetRevealedBuffer(data.buffer0, data.buffer1, data.buffer2);
-				chunks[trueRootChunkPosition].EnqueueState(MangoFogState.UpdateTexture);
+				chunksByPosition[trueRootChunkPosition].SetAllBuffers(data.fogBuffer, data.blendBuffer, data.blurBuffer);
+				chunksByPosition[trueRootChunkPosition].EnqueueState(MangoFogState.UpdateTexture);
 				fl.Close();
 			}
 			else
@@ -425,8 +429,13 @@ namespace MangoFog
 			{
 				Debug.Log("Mango Fog Instance Initialized");
 				Debug.Log("Mango Fog Debug Enabled.");
-				MangoFogDebug.Instance.CreateDebugBoxes(chunks);
+				MangoFogDebug.Instance.CreateDebugBoxes(chunksByPosition);
 			}
+		}
+
+		public void OnApplicationExit()
+		{
+
 		}
 
 		/// <summary>
@@ -438,15 +447,12 @@ namespace MangoFog
 			{
 				case MangoFogChunkSquared.One:
 					doChunks = false;
-					TotalSquaredSize = chunkSize;
 					break;
 				case MangoFogChunkSquared.TwoByTwo:
 					chunkSquared = 1;
-					TotalSquaredSize = chunkSize * 2;
 					break;
 				case MangoFogChunkSquared.FourByFour:
 					chunkSquared = 2;
-					TotalSquaredSize = chunkSize * 4;
 					break;
 			}
 			
@@ -454,6 +460,11 @@ namespace MangoFog
 			revealersAdded.Clear();
 			revealersRemoved.Clear();
 			GenerateChunks(orientation);
+		}
+
+		public void OnApplicationQuit()
+		{
+			Dispose();
 		}
 
 		/// <summary>
@@ -465,12 +476,12 @@ namespace MangoFog
 			revealersAdded.Clear();
 			revealersRemoved.Clear();
 
-			//loop through chunks and call DestroySelf();
-			foreach (KeyValuePair<Vector3, MangoFogChunk> chunk in chunks)
+			for(int i = 0; i < chunksCreated; i++)
 			{
-				chunk.Value.DestroySelf();
-				chunks.Remove(chunk.Key);
+				chunksByID[i].DestroySelf();
 			}
+			chunksByPosition.Clear();
+			chunksByID.Clear();
 		}
 
 		public void Update()
@@ -508,7 +519,7 @@ namespace MangoFog
 			MangoFogChunk.changeStates = new int[chunksCreated];
 
 			// loop through chunks and start them.
-			foreach (KeyValuePair<Vector3, MangoFogChunk> chunk in chunks)
+			foreach (KeyValuePair<Vector3, MangoFogChunk> chunk in chunksByPosition)
 			{
 				chunk.Value.StartChunk();
 			}
@@ -518,22 +529,25 @@ namespace MangoFog
 				Debug.Log("Mango Fog Instance Generated Chunks.");
 		}
 
+		#endregion
+
+		#region Private Methods
+
 		protected void InstantiateChunk(Vector3 pos)
 		{
-			GameObject chunkObj = Instantiate(new GameObject(), pos, Quaternion.identity, transform);
+			GameObject chunkObj = Instantiate(chunkPrefab, pos, Quaternion.identity, transform);
 			MangoFogChunk newFogChunk = chunkObj.AddComponent<MangoFogChunk>();
 			MangoFogRenderer newFogRenderer = chunkObj.AddComponent<MangoFogRenderer>();
 			// gives the new chunk a reference to its renderer
 			newFogChunk.SetRenderer(newFogRenderer);
 			// inits the chunk
-			newFogChunk.Init();
+			newFogChunk.Init(this);
 			newFogChunk.gameObject.SetActive(true);
 			// set the chunk id
 			newFogChunk.SetChunkID(chunksCreated);
-			// set the chunk blend mode 
-			newFogChunk.BlendMode = BlendMode;
 			//add the chunk to the dictionary
-			chunks.Add(pos, newFogChunk);
+			chunksByPosition.Add(pos, newFogChunk);
+			chunksByID.Add(chunksCreated, newFogChunk);
 			chunkObj.gameObject.name = "Mango Fog Chunk " + chunksCreated;
 			chunksCreated += 1;
 		}
@@ -570,12 +584,13 @@ namespace MangoFog
 
 			for (int i = revealers.size - 1; i >= 0; i--)
 			{
-				IMangoFogRevealer revealer = revealers[i];
-				revealer.Update(deltaMS);
-				if (!revealer.IsValid())
-					revealer.Release();
+				revealers[i].Update(deltaMS);
+				if (!revealers[i].IsValid())
+					revealers[i].Release();
 			}
 		}
 	}
+
+	#endregion
 }
 
