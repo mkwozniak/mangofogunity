@@ -1,5 +1,5 @@
-# MangoFog Unity 2D
-MangoFog2D is a 2D/3D mesh rendered fog of war system for the Unity Engine. It's based off TasharenFogOfWar except it can use a MeshRenderer, SpriteRenderer, or render directly to the GPU. Plus several other features. 
+# MangoFog Unity
+MangoFog is a 2D/3D mesh rendered fog of war system for the Unity Engine. It's based off TasharenFogOfWar except it can use a MeshRenderer, SpriteRenderer, or render directly to the GPU. Plus several other features. 
 The original blur algorithm and LOS algorithm is all thanks to TasharenFogOfWar. The same technique is applied to the Orthographic2D perspective.
 The fog runs on its own thread and doesn't affect performance.
 https://github.com/insominx/TasharenFogOfWar
@@ -8,9 +8,9 @@ I'm using this for a 2D game I'm developing for fun. Maybe someone else will als
 Here's a screen shot from the included example scene using some art from opengameart and the Tilemap system.
 If there's any comments, questions or issues, email me at mwozniak@wozware.net or mkwozniak@outlook.com.
 
-![MangoFog2D Preview GIF](https://media.giphy.com/media/KqieE87PNAGAuijVMQ/giphy.gif)
+![MangoFog Preview GIF](https://media.giphy.com/media/KqieE87PNAGAuijVMQ/giphy.gif)
 
-![MangoFog2D Preview](https://i.imgur.com/o4MgGTB.png)
+![MangoFog Preview](https://i.imgur.com/o4MgGTB.png)
 
 **This is meant for Unity Versions 2018 +**
 **Tested with URP but should work with Built-In**
