@@ -4,6 +4,9 @@ The original blur algorithm and LOS algorithm is all thanks to TasharenFogOfWar.
 The fog runs on its own thread and doesn't affect performance.
 https://github.com/insominx/TasharenFogOfWar
 
+**MangoFog is currently not meant or optimized for mobile devices**
+In the future, there may be a more lightweight and performant version of MangoFog released to target these devices.
+
 I'm using this for a 2D game I'm developing for fun. Maybe someone else will also find it useful.
 Here's a screen shot from the included example scene using some art from opengameart and the Tilemap system.
 If there's any comments, questions or issues, email me at mwozniak@wozware.net or mkwozniak@outlook.com.
