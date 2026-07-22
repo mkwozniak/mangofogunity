@@ -3,7 +3,12 @@ guid: 799ea37db3eb5d6469e18da5782bac98
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - fogMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+  - fogMat: {fileID: 2100000, guid: 003527cd71f975048a6254f3535a0e7b, type: 2}
+  - fogShader: {fileID: 4800000, guid: bc1f5f0eb82191a4b858c2bd2cfc1a6b, type: 3}
+  - chunkPrefab: {fileID: 6424870726153669074, guid: e8aaa6e87ed6ae54ca9851b37b66be82,
+      type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

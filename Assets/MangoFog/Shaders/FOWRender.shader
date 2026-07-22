@@ -47,7 +47,7 @@ Shader "MangoFog/FOWRender"
 			half2 fog = lerp(data.rg, data.ba, _BlendFactor);
 			half4 color = lerp(_Unexplored, _Explored, fog.g);
 			color.a = (1 - fog.r) * color.a;
-			return color;
+			return saturate(color);
 		}
 		ENDCG
 		

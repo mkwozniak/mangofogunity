@@ -1,0 +1,7 @@
+{
+  "name": "com.mangofog",
+  "displayName": "MangoFog Unity",
+  "version": "1.0.0",
+  "unity": "2022.3",
+  "description": "MangoFog is a 2D/3D mesh rendered fog of war system for the Unity Engine."
+}

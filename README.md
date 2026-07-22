@@ -28,6 +28,14 @@ If there's any comments, questions or issues, email me at mwozniak@wozware.net o
 
 ### Installation
 
+Install via Unity's Package Manager using this git URL:
+
+```
+https://github.com/cmapua/mangofogunity.git?path=Assets/MangoFog
+```
+
+### Usage
+
 1. Create a GameObject and add the MangoFogInstance component.
 2. Take the MangoFogMaterial (in the Materials folder) and drag it into the Fog Material slot.
 3. Take the FOWRender shader (in the Shaders folder) and drag it into the Fog Shader slot.
